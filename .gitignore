@@ -16,6 +16,9 @@ dist/
 # Browser profile created by `cardgrab grab`
 .cardgrab/
 
+# Design notes and specs, kept local
+docs/
+
 # Local collection configs and downloaded cards
 collections/*.local.toml
 downloads/
