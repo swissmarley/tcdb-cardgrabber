@@ -9,6 +9,7 @@ description = "Download and organise trading card images from TCDB into clean, d
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
+authors = [{ name = "swissmarley" }]
 keywords = ["trading-cards", "tcdb", "scraper", "playwright", "collection"]
 classifiers = [
     "Programming Language :: Python :: 3.11",
@@ -21,6 +22,11 @@ classifiers = [
 # The processing pipeline has no dependencies at all.
 # Playwright is needed only for the `grab` command.
 dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/swissmarley/tcdb-cardgrabber"
+Repository = "https://github.com/swissmarley/tcdb-cardgrabber"
+Issues = "https://github.com/swissmarley/tcdb-cardgrabber/issues"
 
 [project.optional-dependencies]
 grab = ["playwright>=1.40"]

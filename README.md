@@ -20,8 +20,8 @@ Works for any set. Change the URL, not the code.
 ## Install
 
 ```bash
-git clone <your-repo-url> cardgrab
-cd cardgrab
+git clone https://github.com/swissmarley/tcdb-cardgrabber.git
+cd tcdb-cardgrabber
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 .venv/bin/playwright install chromium
@@ -283,4 +283,4 @@ and do not run several sets in parallel.
 
 ## Licence
 
-MIT
+MIT — see [LICENSE](LICENSE).
