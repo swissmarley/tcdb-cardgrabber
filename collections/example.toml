@@ -1,0 +1,38 @@
+# Example collection settings.
+#
+# You only need a file like this if you process the same set repeatedly.
+# For a one-off, `cardgrab auto <folder>` needs no config at all.
+#
+# Create one interactively with:  cardgrab init
+# Then run it with:               cardgrab run collections/example.toml
+
+name = "2026 Panini Prizm Monopoly FIFA World Cup"
+
+# Reference only. Nothing here fetches it.
+set_url = "https://www.tcdb.com/Checklist.cfm/sid/598914/2026-Panini-Prizm-Monopoly-FIFA-World-Cup"
+
+# Where `cardgrab grab` saved the images.
+input_dirs = ["~/Downloads/monopoly"]
+
+# The collection folder is created inside here, named after 'name' above.
+output_root = "~/Pictures/CardCollections"
+
+# The checklist `grab` wrote alongside the images. This is what puts card
+# numbers and player names on the files.
+manifest_json = "~/Downloads/monopoly/cardgrab-manifest.json"
+
+# --- Optional tuning ------------------------------------------------------
+# Cards are about 0.71 wide-to-tall. Widen if real cards are rejected.
+aspect_min = 0.60
+aspect_max = 0.85
+
+# Raise these once you have full-size scans, to ignore leftover thumbnails.
+min_width = 120
+min_height = 120
+
+# "flat" = one folder. "split" = front/ and back/ subfolders.
+layout = "flat"
+
+# Keep images that could not be tied to a card, in _unmatched/.
+# A visible leftover beats a confidently wrong filename.
+keep_unmatched = true

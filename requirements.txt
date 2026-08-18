@@ -1,0 +1,6 @@
+# Runtime: only the `grab` command needs a browser driver.
+# Everything else runs on the standard library alone.
+playwright>=1.40
+
+# Test-only: used to generate image fixtures. Tests skip cleanly without it.
+pillow>=10.0

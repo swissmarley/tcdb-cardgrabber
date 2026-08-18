@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cardgrab"
+version = "1.1.0"
+description = "Download and organise trading card images from TCDB into clean, deduplicated collections"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+keywords = ["trading-cards", "tcdb", "scraper", "playwright", "collection"]
+classifiers = [
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Environment :: Console",
+    "Topic :: Multimedia :: Graphics",
+]
+
+# The processing pipeline has no dependencies at all.
+# Playwright is needed only for the `grab` command.
+dependencies = []
+
+[project.optional-dependencies]
+grab = ["playwright>=1.40"]
+test = ["pillow>=10.0"]
+
+[project.scripts]
+cardgrab = "cardgrab.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["cardgrab*"]
+
+[tool.setuptools.package-data]
+cardgrab = ["py.typed"]
