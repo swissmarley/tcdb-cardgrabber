@@ -130,7 +130,7 @@ def _collect_from_page(page) -> list[Card]:
     raw = page.evaluate(
         r"""() => [...document.querySelectorAll('a[href]')].map(a => ({
             href: a.href,
-            text: (a.textContent || '').trim().replace(/\\s+/g, ' ')
+            text: (a.textContent || '').trim().replace(/\s+/g, ' ')
         }))"""
     )
 
@@ -165,26 +165,76 @@ def _collect_from_page(page) -> list[Card]:
     return list(cards.values())
 
 
-def _page_urls(page, set_url: str) -> list[str]:
-    """Work out the set's pagination URLs, if it is paginated."""
-    hrefs = page.evaluate(
-        r"""() => [...document.querySelectorAll('a[href]')]
-             .map(a => a.href)
-             .filter(h => /PageIndex=\\d+/i.test(h))"""
-    )
-    indices = set()
-    for href in hrefs:
-        match = re.search(r"PageIndex=(\d+)", href, re.IGNORECASE)
-        if match:
-            indices.add(int(match.group(1)))
+_PAGE_PARAM = re.compile(r"[?&](PageIndex|page|pg|p)=(\d+)", re.IGNORECASE)
 
-    if not indices:
+
+def _pagination_param(page) -> str:
+    """Which query parameter this site uses for paging."""
+    try:
+        hrefs = page.evaluate(
+            "() => [...document.querySelectorAll('a[href]')].map(a => a.href)"
+        )
+    except Exception:
+        return "PageIndex"
+
+    for href in hrefs or []:
+        match = _PAGE_PARAM.search(href or "")
+        if match:
+            return match.group(1)
+    return "PageIndex"
+
+
+def _with_page(set_url: str, param: str, index: int) -> str:
+    """The set URL pointed at a given page."""
+    base = re.sub(rf"[?&]{re.escape(param)}=\d+", "", set_url, flags=re.IGNORECASE)
+    base = base.rstrip("?&")
+    separator = "&" if "?" in base else "?"
+    return f"{base}{separator}{param}={index}"
+
+
+def _collect_all_pages(
+    page, set_url: str, timeout: int, delay: float, max_pages: int = 60
+) -> list[Card]:
+    """Every card across every page of the checklist.
+
+    Rather than trusting pagination markup, this walks the page parameter
+    upwards and stops when a page contributes no card it has not already seen.
+    That works whether or not the pagination links can be found, and copes with
+    a site that only ever shows a few page numbers at a time.
+    """
+    cards: dict[str, Card] = {}
+    for card in _collect_with_retry(page):
+        cards.setdefault(card.number, card)
+
+    if not cards:
         return []
 
-    highest = max(indices)
-    separator = "&" if "?" in set_url else "?"
-    base = re.sub(r"[?&]PageIndex=\d+", "", set_url, flags=re.IGNORECASE)
-    return [f"{base}{separator}PageIndex={i}" for i in range(2, highest + 1)]
+    param = _pagination_param(page)
+    print(f"  page 1: {len(cards)} cards")
+
+    for index in range(2, max_pages + 1):
+        url = _with_page(set_url, param, index)
+        try:
+            page.goto(url, wait_until="domcontentloaded")
+        except Exception as exc:  # noqa: BLE001
+            print(f"  page {index}: {type(exc).__name__} - stopping here")
+            break
+
+        _wait_for_clearance(page, timeout)
+
+        fresh = [c for c in _collect_from_page(page) if c.number not in cards]
+        if not fresh:
+            # Either the last page, or the site ignored the parameter.
+            break
+
+        for card in fresh:
+            cards[card.number] = card
+        print(f"  page {index}: +{len(fresh)} cards (total {len(cards)})")
+        time.sleep(delay)
+    else:
+        print(f"  stopped at the {max_pages}-page safety limit")
+
+    return list(cards.values())
 
 
 def _card_images(page) -> list[dict]:
@@ -427,7 +477,7 @@ def grab(
             page.goto(set_url, wait_until="domcontentloaded")
             _wait_for_clearance(page, timeout)
 
-            cards = _collect_with_retry(page)
+            cards = _collect_all_pages(page, set_url, timeout, delay)
             if not cards:
                 _dump_debug(page, out_dir)
                 if not headless:
@@ -445,15 +495,6 @@ def grab(
                     "for the same set.\n"
                     "  The page was saved for inspection - see above."
                 )
-
-            for extra in _page_urls(page, set_url):
-                print(f"  reading {extra}")
-                page.goto(extra, wait_until="domcontentloaded")
-                _wait_for_clearance(page, timeout)
-                for card in _collect_from_page(page):
-                    if all(c.number != card.number for c in cards):
-                        cards.append(card)
-                time.sleep(delay)
 
             cards.sort(key=lambda c: _sort_key(c.number))
             stats.cards_found = len(cards)

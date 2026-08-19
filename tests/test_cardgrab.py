@@ -7,6 +7,7 @@ skip cleanly when it is absent.
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import tempfile
 import unittest
@@ -697,3 +698,64 @@ class SideDetectionRegressionTests(unittest.TestCase):
             self.assertFalse(any("(2)" in n for n in names), names)
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
+
+
+class PaginationTests(unittest.TestCase):
+    """Only page 1 was ever read, so a 300-card set reported 100 cards."""
+
+    def test_builds_page_urls(self):
+        from cardgrab.grab import _with_page
+
+        self.assertEqual(
+            _with_page("http://x/Checklist.cfm/sid/1/Set", "PageIndex", 3),
+            "http://x/Checklist.cfm/sid/1/Set?PageIndex=3",
+        )
+
+    def test_replaces_an_existing_page_number(self):
+        from cardgrab.grab import _with_page
+
+        self.assertEqual(
+            _with_page("http://x/Set?PageIndex=1", "PageIndex", 4),
+            "http://x/Set?PageIndex=4",
+        )
+
+    def test_keeps_other_query_parameters(self):
+        from cardgrab.grab import _with_page
+
+        self.assertEqual(
+            _with_page("http://x/Set?sort=num", "PageIndex", 2),
+            "http://x/Set?sort=num&PageIndex=2",
+        )
+
+    def test_recognises_common_page_parameters(self):
+        from cardgrab.grab import _PAGE_PARAM
+
+        for url, expected in [
+            ("http://x/s?PageIndex=2", "PageIndex"),
+            ("http://x/s?page=5", "page"),
+            ("http://x/s?a=b&p=3", "p"),
+        ]:
+            match = _PAGE_PARAM.search(url)
+            self.assertIsNotNone(match, url)
+            self.assertEqual(match.group(1), expected)
+
+
+class InjectedJavaScriptTests(unittest.TestCase):
+    """Raw Python strings must not double-escape regex tokens for JavaScript.
+
+    `r"/PageIndex=\\\\d+/"` reaches JS as `\\\\d`, which matches a literal
+    backslash followed by 'd' rather than a digit. That silently disabled
+    pagination detection, and separately broke link-text whitespace
+    normalisation. Both looked like working code.
+    """
+
+    def test_no_double_escaped_regex_tokens(self):
+        offenders = []
+        for path in Path("cardgrab").rglob("*.py"):
+            if path.name.startswith("._"):
+                continue
+            text = path.read_text(encoding="utf-8")
+            for match in re.finditer(r"\\\\[dswbDSWB]", text):
+                line = text[: match.start()].count("\n") + 1
+                offenders.append(f"{path}:{line} {match.group(0)}")
+        self.assertEqual(offenders, [], f"double-escaped regex tokens: {offenders}")
